@@ -2,7 +2,7 @@
 Author: Night-stars-1 nujj1042633805@gmail.com
 Date: 2023-07-09 21:19:23
 LastEditors: Night-stars-1 nujj1042633805@gmail.com
-LastEditTime: 2023-08-29 23:56:03
+LastEditTime: 2023-08-30 00:52:37
 Description: 
 
 Copyright (c) 2023 by Night-stars-1, All Rights Reserved. 
@@ -54,7 +54,7 @@ async def _(bot: Bot, event: ALL_G_MessageEvent):
     """
     手动游戏签到函数
     """
-    qq = event.get_user_id() if not isinstance(event, ConsoleMessageEvent) else 1042633805
+    qq = event.get_user_id() if not isinstance(event, ConsoleMessageEvent) else 1
     logger.info(qq)
     user = _conf.users.get(qq)
     if not user or not user.accounts:
@@ -72,7 +72,7 @@ async def _(bot: Bot, event: ConsoleMessageEvent):
     """
     手动米游币任务函数
     """
-    qq = event.get_user_id() if not isinstance(event, ConsoleMessageEvent) else 1042633805
+    qq = event.get_user_id() if not isinstance(event, ConsoleMessageEvent) else 1
     user = _conf.users.get(qq)
     if not user or not user.accounts:
         await manually_game_sign.finish(f"⚠️你尚未绑定米游社账户，请先使用『{COMMAND_BEGIN}登录』进行登录")
@@ -95,7 +95,7 @@ async def _(bot: Bot, event: ALL_G_MessageEvent, args=CommandArgs()):
     """
     手动查看原神便笺
     """
-    qq = event.get_user_id() if not isinstance(event, ConsoleMessageEvent) else 1042633805
+    qq = event.get_user_id() if not isinstance(event, ConsoleMessageEvent) else 1
     user = _conf.users.get(qq)
     if not user or not user.accounts:
         await manually_game_sign.finish(f"⚠️你尚未绑定米游社账户，请先使用『{COMMAND_BEGIN}登录』进行登录")
@@ -560,8 +560,8 @@ async def daily_schedule(bot: Bot, event: ALL_G_MessageEvent):
     """
     # 随机延迟
     global failed_list
-    qq = event.get_user_id() if isinstance(event, GroupMessageEvent) else 1042633805
-    if qq == 1042633805:
+    qq = event.get_user_id() if isinstance(event, GroupMessageEvent) else 1
+    if qq == 1:
         message = "⚠️每日签到执行完成"
         logger.info(f"{_conf.preference.log_head}开始执行每日自动任务")
         await bot.send_msg(

@@ -227,7 +227,7 @@ async def check_qrcode():
                 if isinstance(event, GuildMessageCreateEvent):
                     await bot.delete_message(channel_id=msg_event.sent_msg.channel_id, message_id=msg_event.sent_msg.id, hidetip=True)
                 else:
-                    await bot.delete_msg(message_id=msg_event.get("message_id"))
+                    await bot.delete_msg(message_id=msg_event.message_id)
             elif status_data:
                 game_token = status_data.game_token
                 cookie_token = await get_cookie_token(game_token)
@@ -270,4 +270,4 @@ async def check_qrcode():
                     if isinstance(event, GuildMessageCreateEvent):
                         await bot.delete_message(channel_id=msg_event.sent_msg.channel_id, message_id=msg_event.sent_msg.id, hidetip=True)
                     else:
-                        await bot.delete_msg(message_id=msg_event.get("message_id"))
+                        await bot.delete_msg(message_id=msg_event.message_id)
