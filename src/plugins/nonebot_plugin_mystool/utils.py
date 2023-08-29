@@ -76,7 +76,12 @@ class CommandBegin:
     def __str__(cls):
         return cls.string
 
-
+def get_user_id(event: ALL_MessageEvent) -> int:
+    """
+    获取用户ID
+    """
+    return int(event.get_user_id())
+    
 def get_last_command_sep():
     """
     获取第最后一个命令分隔符

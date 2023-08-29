@@ -28,7 +28,8 @@ from .simple_api import (get_cookie_token_by_stoken,
                          create_mmt, create_mobile_captcha)
 from .user_data import UserAccount, UserData
 from .utils import (COMMAND_BEGIN, ALL_Message, ALL_MessageEvent,
-                    ALL_P_MessageEvent, logger, get_validate_fromv4)
+                    ALL_P_MessageEvent, logger, get_validate_fromv4,
+                    get_user_id)
 
 _conf = PluginDataManager.plugin_data_obj
 
@@ -70,7 +71,7 @@ async def _(_: ALL_MessageEvent, state: T_State, phone: str = ArgPlainText('phon
 
 @get_cookie.handle()
 async def _(event: ALL_MessageEvent, state: T_State, phone: str = ArgStr('phone')):
-    user = _conf.users.get(event.get_user_id())
+    user = _conf.users.get(get_user_id(event))
     if user:
         account_filter = filter(lambda x: x.phone_number == phone, user.accounts.values())
         account = next(account_filter, None)
@@ -110,23 +111,23 @@ async def _(event: ALL_MessageEvent, state: T_State, captcha: str = ArgPlainText
     if not captcha.isdigit():
         await get_cookie.reject("⚠️验证码应为数字，请重新输入")
     else:
-        _conf.users.setdefault(event.get_user_id(), UserData())
-        user = _conf.users[event.get_user_id()]
+        _conf.users.setdefault(get_user_id(event), UserData())
+        user = _conf.users[get_user_id(event)]
         # 1. 通过短信验证码获取 login_ticket / 使用已有 login_ticket
         login_status, cookies = await get_login_ticket_by_captcha(phone_number, int(captcha))
         if login_status:
             # logger.info(f"用户 {phone_number} 成功获取 login_ticket: {cookies.login_ticket}")
-            account = _conf.users[event.get_user_id()].accounts.get(cookies.bbs_uid)
+            account = _conf.users[get_user_id(event)].accounts.get(cookies.bbs_uid)
             if isinstance(event, MessageEvent):
-                _conf.users[event.get_user_id()].software = "qq"
+                _conf.users[get_user_id(event)].software = "qq"
             elif isinstance(event, GuildMessageCreateEvent):
-                _conf.users[event.get_user_id()].software = "qqguild"
+                _conf.users[get_user_id(event)].software = "qqguild"
             elif isinstance(event, ConsoleMessageEvent):
-                _conf.users[event.get_user_id()].software = "console"
+                _conf.users[get_user_id(event)].software = "console"
             elif isinstance(event, TelegramMessageEvent):
-                _conf.users[event.get_user_id()].software = "telegram"
+                _conf.users[get_user_id(event)].software = "telegram"
             else:
-                _conf.users[event.get_user_id()].software = "unknown"
+                _conf.users[get_user_id(event)].software = "unknown"
             """当前的账户数据对象"""
             if not account or not account.cookies:
                 user.accounts.update({
@@ -217,7 +218,7 @@ async def handle_first_receive(event: ALL_MessageEvent, matcher: Matcher):
     """
     if isinstance(event, GroupMessageEvent):
         await output_cookies.finish("⚠️为了保护您的隐私，请添加机器人好友后私聊进行Cookies导出。")
-    user_account = _conf.users[event.get_user_id()].accounts
+    user_account = _conf.users[get_user_id(event)].accounts
     if not user_account:
         await output_cookies.finish(f"⚠️你尚未绑定米游社账户，请先使用『{COMMAND_BEGIN}登录』进行登录")
     elif len(user_account) == 1:
@@ -240,7 +241,7 @@ async def _(event: ALL_P_MessageEvent, matcher: Matcher, uid=Arg("bbs_uid")):
         uid = uid.extract_plain_text().strip()
     if uid == '退出':
         await matcher.finish('🚪已成功退出')
-    user_account = _conf.users[event.get_user_id()].accounts
+    user_account = _conf.users[get_user_id(event)].accounts
     if uid in user_account:
         await output_cookies.finish(json.dumps(user_account[uid].cookies.dict(cookie_type=True), indent=4))
     else:

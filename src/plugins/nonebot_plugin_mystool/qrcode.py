@@ -22,15 +22,16 @@ from nonebot.adapters.qqguild import (MessageEvent as GuildMessageEvent,
                                       Message as GuildMessage, Bot as GuildBot,
                                       MessageSegment as GuildMessageSegment,
                                       MessageCreateEvent as GuildMessageCreateEvent)
+from nonebot.adapters.telegram.event import MessageEvent as TelegramMessageEvent
 from nonebot.internal.adapter.bot import Bot
-from nonebot_plugin_saa import Image, Text, MessageFactory
+from nonebot_plugin_saa import Image, Text, MessageFactory, TargetQQGroup, PlatformTarget
 from nonebot_plugin_apscheduler import scheduler
 
 from .simple_api import ApiResultHandler, HEADERS_QRCODE_API, get_ltoken_by_stoken
 from .plugin_data import PluginDataManager, write_plugin_data
 from .data_model import QrcodeLoginData
 from .utils import logger, generate_ds, \
-    get_async_retry, get_validate, ALL_MessageEvent
+    get_async_retry, get_validate, ALL_MessageEvent, get_user_id
 from .user_data import UserAccount, UserData, BBSCookies
 
 _conf = PluginDataManager.plugin_data_obj
@@ -195,7 +196,7 @@ qrcode_bind.usage = "通过米游社扫码的方式登录"
 
 @qrcode_bind.handle()
 async def _(event: ALL_MessageEvent):
-    if str(event.get_user_id()) in running_login_data:
+    if str(get_user_id(event)) in running_login_data:
         await qrcode_bind.finish('你已经在绑定中了，请扫描上一次的二维码')
     login_data = await create_login_data()
     img_b64 = generate_qrcode(login_data.url)
@@ -204,14 +205,14 @@ async def _(event: ALL_MessageEvent):
         Image(img_b64), Text(f'\n请在3分钟内使用米游社扫码并确认进行绑定。\n注意：1.扫码即代表你同意将Cookie信息授权给二维码发送者\n2.扫码时会提示登录原神，实际不会把你顶掉原神\n3.其他人请不要乱扫，否则会将你的账号绑到TA身上！')
     ])
     msg_event = await msg_builder.send(at_sender=True)
-    running_login_data[event.get_user_id()] = {
+    running_login_data[get_user_id(event)] = {
         "login_data": login_data,
         "event": event,
         "msg_event": msg_event
     }
 
 
-@scheduler.scheduled_job('cron', second='*/10', misfire_grace_time=10)
+@scheduler.scheduled_job('cron', second='*/10', misfire_grace_time=20)
 async def check_qrcode():
     with contextlib.suppress(RuntimeError):
         for user_id, data_dict in running_login_data.items():
@@ -248,6 +249,16 @@ async def check_qrcode():
                 _conf.users.setdefault(user_id, UserData())
                 user = _conf.users[user_id]
                 account = user.accounts.get(cookies.bbs_uid)
+                if isinstance(event, MessageEvent):
+                    user.software = "qq"
+                elif isinstance(event, GuildMessageCreateEvent):
+                    user.software = "qqguild"
+                elif isinstance(event, ConsoleMessageEvent):
+                    user.software = "console"
+                elif isinstance(event, TelegramMessageEvent):
+                    user.software = "telegram"
+                else:
+                    user.software = "unknown"
                 """当前的账户数据对象"""
                 if not account or not account.cookies:
                     user.accounts.update({
@@ -265,8 +276,9 @@ async def check_qrcode():
                     write_plugin_data()
                     logger.info(f"{_conf.preference.log_head}米游社账户 {cookies.bbs_uid} 绑定成功")
                     running_login_data.pop(user_id)
-                    await bot.send(event=event, message=f"🎉米游社账户 {cookies.bbs_uid} 绑定成功")
+                    aaa = {"platform_type": "QQ Group", "group_id": 2233}
                     logger.info(msg_event)
+                    await bot.send(event=event, message=f"🎉米游社账户 {cookies.bbs_uid} 绑定成功")
                     if isinstance(event, GuildMessageCreateEvent):
                         await bot.delete_message(channel_id=msg_event.sent_msg.channel_id, message_id=msg_event.sent_msg.id, hidetip=True)
                     else:

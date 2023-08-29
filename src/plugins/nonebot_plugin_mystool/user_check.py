@@ -21,7 +21,7 @@ from nonebot.adapters.telegram import Bot as TGBot
 from nonebot_plugin_apscheduler import scheduler
 
 from .plugin_data import PluginDataManager, write_plugin_data
-from .utils import logger, PLUGIN
+from .utils import logger, PLUGIN, get_user_id
 
 _conf = PluginDataManager.plugin_data_obj
 _driver = get_driver()
@@ -33,12 +33,12 @@ async def _(bot: Bot, event: RequestEvent):
     # 判断为加好友事件
     if isinstance(event, FriendRequestEvent):
         if _conf.preference.add_friend_accept:
-            logger.info(f'{_conf.preference.log_head}已添加好友{event.get_user_id()}')
+            logger.info(f'{_conf.preference.log_head}已添加好友{get_user_id(event)}')
             await bot.set_friend_add_request(flag=event.flag, approve=True)
             if _conf.preference.add_friend_welcome:
                 # 等待腾讯服务器响应
                 await asyncio.sleep(1.5)
-                await bot.send_private_msg(user_id=event.get_user_id(),
+                await bot.send_private_msg(user_id=get_user_id(event),
                                            message=f'欢迎使用米游社小助手，请发送『{command_start}帮助』查看更多用法哦~')
     # 判断为邀请进群事件
     elif isinstance(event, GroupRequestEvent):

@@ -16,7 +16,7 @@ from nonebot.params import Arg, ArgPlainText, T_State
 from .myb_missions_api import BaseMission
 from .plugin_data import PluginDataManager, write_plugin_data
 from .user_data import UserAccount
-from .utils import COMMAND_BEGIN, ALL_Message, ALL_MessageEvent
+from .utils import COMMAND_BEGIN, ALL_Message, ALL_MessageEvent, get_user_id
 
 _conf = PluginDataManager.plugin_data_obj
 
@@ -43,7 +43,7 @@ async def _(event: ALL_MessageEvent, matcher: Matcher):
     """
     账号设置命令触发
     """
-    user = _conf.users.get(event.get_user_id())
+    user = _conf.users.get(get_user_id(event))
     user_account = user.accounts if user else None
     if not user_account:
         await account_setting.finish(
@@ -69,7 +69,7 @@ async def _(event: ALL_MessageEvent, matcher: Matcher, state: T_State, uid=Arg('
     if uid == '退出':
         await matcher.finish('🚪已成功退出')
 
-    user_account = _conf.users[event.get_user_id()].accounts
+    user_account = _conf.users[get_user_id(event)].accounts
     if uid not in user_account:
         await account_setting.reject('⚠️您发送的账号不在以上账号内，请重新发送')
     account = user_account[uid]
@@ -99,7 +99,7 @@ async def _(event: ALL_MessageEvent, state: T_State, arg=ArgPlainText('arg')):
     """
     arg = arg.strip()
     account: UserAccount = state['account']
-    user_account = _conf.users[event.get_user_id()].accounts
+    user_account = _conf.users[get_user_id(event)].accounts
     if arg == '退出':
         await account_setting.finish('🚪已成功退出')
     elif arg == '1':
@@ -175,7 +175,7 @@ async def _(event: ALL_MessageEvent, matcher: Matcher):
     """
     通知设置命令触发
     """
-    user = _conf.users[event.get_user_id()]
+    user = _conf.users[get_user_id(event)]
     await matcher.send(
         f"自动通知每日计划任务结果：{'🔔开' if user.enable_notice else '🔕关'}"
         "\n请问您是否需要更改呢？\n请回复“是”或“否”\n🚪发送“退出”即可退出")
@@ -187,7 +187,7 @@ async def _(event: ALL_MessageEvent, matcher: Matcher,
     """
     根据选择变更通知设置
     """
-    user = _conf.users[event.get_user_id()]
+    user = _conf.users[get_user_id(event)]
     if choice == '退出':
         await matcher.finish("🚪已成功退出")
     elif choice == '是':

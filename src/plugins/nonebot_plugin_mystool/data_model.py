@@ -2,7 +2,7 @@
 Author: Night-stars-1 nujj1042633805@gmail.com
 Date: 2023-07-09 21:19:17
 LastEditors: Night-stars-1 nujj1042633805@gmail.com
-LastEditTime: 2023-08-29 17:43:21
+LastEditTime: 2023-08-30 01:00:57
 Description: 
 
 Copyright (c) 2023 by Night-stars-1, All Rights Reserved. 
@@ -519,7 +519,7 @@ class StarBoardStatus(BaseApiStatus):
 class GeetestResult(NamedTuple):
     """人机验证结果数据"""
     validate: str
-    seccode: str
+    challenge: str
 
 
 class GeetestResultV4(BaseModel):
