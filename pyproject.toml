@@ -55,3 +55,12 @@ optional = true
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.nonebot]
+adapters = [
+    { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" },
+    {name = "Console", module_name = "nonebot.adapters.console"}
+]
+plugins = []
+plugin_dirs = []
+builtin_plugins = ["echo"]

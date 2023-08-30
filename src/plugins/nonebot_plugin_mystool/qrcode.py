@@ -211,75 +211,74 @@ async def _(event: ALL_MessageEvent):
         "msg_event": msg_event
     }
 
-
-@scheduler.scheduled_job('cron', second='*/10', misfire_grace_time=20)
+@scheduler.scheduled_job('cron', second='*/10')
 async def check_qrcode():
-    with contextlib.suppress(RuntimeError):
-        for user_id, data_dict in running_login_data.items():
-            data = data_dict["login_data"]
-            event: MessageEvent = data_dict["event"]
-            msg_event: dict = data_dict["msg_event"]
-            bot:Bot = get_bot()
-            status_data = await check_login(data)
-            logger.info(status_data)
-            if status_data.expiredCode:
-                send_msg = '绑定二维码已过期，请重新发送扫码绑定指令'
-                running_login_data.pop(user_id)
+    bot:Bot = get_bot()
+    keys_to_remove = []
+    for user_id, data_dict in running_login_data.items():
+        data = data_dict["login_data"]
+        event: MessageEvent = data_dict["event"]
+        msg_event: Message = data_dict["msg_event"]
+        status_data = await check_login(data)
+        logger.info(status_data)
+        if status_data.expiredCode:
+            #send_msg = '绑定二维码已过期，请重新发送扫码绑定指令'
+            keys_to_remove.append(user_id)
+            if isinstance(event, GuildMessageCreateEvent):
+                await bot.delete_message(channel_id=msg_event.sent_msg.channel_id, message_id=msg_event.sent_msg.id, hidetip=True)
+            else:
+                await bot.delete_msg(message_id=msg_event.message_id)
+        elif status_data:
+            keys_to_remove.append(user_id)
+            game_token = status_data.game_token
+            cookie_token = await get_cookie_token(game_token)
+            stoken_data = await get_stoken(data={'account_id': int(game_token['uid']),
+                                                'game_token': game_token['token']})
+            mys_id = stoken_data['user_info']['aid']
+            mid = stoken_data['user_info']['mid']
+            stoken = stoken_data['token']['token']
+            cookies = BBSCookies.parse_obj({
+                    "stuid": mys_id,
+                    "ltuid": mys_id,
+                    "account_id": mys_id,
+                    "login_uid": mys_id,
+                    "stoken_v2": stoken,
+                    "cookie_token": cookie_token,
+                    "mid": mid
+                })
+            _conf.users.setdefault(user_id, UserData())
+            user = _conf.users[user_id]
+            account = user.accounts.get(cookies.bbs_uid)
+            type2software = {
+                MessageEvent: "qq",
+                GuildMessageCreateEvent: "qqguild",
+                ConsoleMessageEvent: "console",
+                TelegramMessageEvent: "telegram"
+            }
+            user.software = type2software.get(type(event), "unknown")
+            """当前的账户数据对象"""
+            if not account or not account.cookies:
+                user.accounts.update({
+                    cookies.bbs_uid: UserAccount(phone_number=14514, cookies=cookies)
+                })
+                account = user.accounts[cookies.bbs_uid]
+            else:
+                account.cookies.update(cookies)
+            write_plugin_data()
+            # 4. 通过 stoken_v2 获取 ltoken
+            login_status, cookies = await get_ltoken_by_stoken(account.cookies, account.device_id_ios)
+            if login_status:
+                logger.info(f"用户 {user_id} 成功获取 ltoken: {cookies.ltoken}")
+                account.cookies.update(cookies)
+                write_plugin_data()
+                logger.info(f"{_conf.preference.log_head}米游社账户 {cookies.bbs_uid} 绑定成功")
+                #aaa = {"platform_type": "QQ Group", "group_id": 2233}
+                logger.debug(msg_event)
+                await bot.send(event=event, message=f"🎉米游社账户 {cookies.bbs_uid} 绑定成功")
                 if isinstance(event, GuildMessageCreateEvent):
                     await bot.delete_message(channel_id=msg_event.sent_msg.channel_id, message_id=msg_event.sent_msg.id, hidetip=True)
                 else:
                     await bot.delete_msg(message_id=msg_event.message_id)
-            elif status_data:
-                game_token = status_data.game_token
-                cookie_token = await get_cookie_token(game_token)
-                stoken_data = await get_stoken(data={'account_id': int(game_token['uid']),
-                                                    'game_token': game_token['token']})
-                mys_id = stoken_data['user_info']['aid']
-                mid = stoken_data['user_info']['mid']
-                stoken = stoken_data['token']['token']
-                cookies = BBSCookies.parse_obj({
-                        "stuid": mys_id,
-                        "ltuid": mys_id,
-                        "account_id": mys_id,
-                        "login_uid": mys_id,
-                        "stoken_v2": stoken,
-                        "cookie_token": cookie_token,
-                        "mid": mid
-                    })
-                _conf.users.setdefault(user_id, UserData())
-                user = _conf.users[user_id]
-                account = user.accounts.get(cookies.bbs_uid)
-                if isinstance(event, MessageEvent):
-                    user.software = "qq"
-                elif isinstance(event, GuildMessageCreateEvent):
-                    user.software = "qqguild"
-                elif isinstance(event, ConsoleMessageEvent):
-                    user.software = "console"
-                elif isinstance(event, TelegramMessageEvent):
-                    user.software = "telegram"
-                else:
-                    user.software = "unknown"
-                """当前的账户数据对象"""
-                if not account or not account.cookies:
-                    user.accounts.update({
-                        cookies.bbs_uid: UserAccount(phone_number=14514, cookies=cookies)
-                    })
-                    account = user.accounts[cookies.bbs_uid]
-                else:
-                    account.cookies.update(cookies)
-                write_plugin_data()
-                # 4. 通过 stoken_v2 获取 ltoken
-                login_status, cookies = await get_ltoken_by_stoken(account.cookies, account.device_id_ios)
-                if login_status:
-                    logger.info(f"用户 {user} 成功获取 ltoken: {cookies.ltoken}")
-                    account.cookies.update(cookies)
-                    write_plugin_data()
-                    logger.info(f"{_conf.preference.log_head}米游社账户 {cookies.bbs_uid} 绑定成功")
-                    running_login_data.pop(user_id)
-                    aaa = {"platform_type": "QQ Group", "group_id": 2233}
-                    logger.info(msg_event)
-                    await bot.send(event=event, message=f"🎉米游社账户 {cookies.bbs_uid} 绑定成功")
-                    if isinstance(event, GuildMessageCreateEvent):
-                        await bot.delete_message(channel_id=msg_event.sent_msg.channel_id, message_id=msg_event.sent_msg.id, hidetip=True)
-                    else:
-                        await bot.delete_msg(message_id=msg_event.message_id)
+    # 在迭代完成后，根据临时列表删除元素
+    for user_id in keys_to_remove:
+        running_login_data.pop(user_id)
