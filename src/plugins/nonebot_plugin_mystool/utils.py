@@ -414,3 +414,7 @@ def CommandArgs() -> Optional[list[str]]:
     :param message: 默认消息
     """
     return Depends(_command_args)
+
+def send_message(**kwargs):
+    ...
+    

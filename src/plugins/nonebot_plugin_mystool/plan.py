@@ -2,7 +2,7 @@
 Author: Night-stars-1 nujj1042633805@gmail.com
 Date: 2023-07-09 21:19:23
 LastEditors: Night-stars-1 nujj1042633805@gmail.com
-LastEditTime: 2023-08-30 01:34:57
+LastEditTime: 2023-08-30 19:24:41
 Description: 
 
 Copyright (c) 2023 by Night-stars-1, All Rights Reserved. 
@@ -54,8 +54,7 @@ async def _(bot: Bot, event: ALL_G_MessageEvent):
     """
     手动游戏签到函数
     """
-    qq = get_user_id(event) if not isinstance(event, ConsoleMessageEvent) else 1
-    logger.info(qq)
+    qq = get_user_id(event)
     user = _conf.users.get(qq)
     if not user or not user.accounts:
         await manually_game_sign.finish(f"⚠️你尚未绑定米游社账户，请先使用『{COMMAND_BEGIN}登录』或者『{COMMAND_BEGIN}扫码登录』进行登录")
@@ -215,20 +214,20 @@ async def perform_game_sign(bot: Bot, qq: int, is_auto: bool,
         if not is_auto and qq not in failed_list['未登录']:
             msg_list += await perform_bbs_sign(bot=bot, qq=qq, is_auto=is_auto, group_event=group_event)
         user_id = _conf.preference.forward_msg_qq if _conf.preference.forward_msg_qq != 0 else qq
-        msg = [
-            MessageSegment.node_custom(
-                user_id=user_id,
-                nickname="哎嘿",
-                content=Message(MessageSegment.text(msg_i)),
-            )
-            for msg_i in msg_list
-        ]
-        logger.info(msg)
-        if group_event:
-            await bot.send_group_forward_msg(group_id=group_event.group_id, messages=msg)
+        if isinstance(group_event, MessageEvent):
+            msg = [
+                MessageSegment.node_custom(
+                    user_id=user_id,
+                    nickname="哎嘿",
+                    content=Message(MessageSegment.text(msg_i)),
+                )
+                for msg_i in msg_list
+            ]
+            if group_event:
+                await bot.send_group_forward_msg(group_id=group_event.group_id, messages=msg)
         else:
-            ...
-            #await bot.send_private_forward_msg(user_id=qq, messages=msg)
+            msg = "\n".join(msg_list)
+            await bot.send(event=group_event, message=msg)
 
         if not games_has_record:
             if group_event:
