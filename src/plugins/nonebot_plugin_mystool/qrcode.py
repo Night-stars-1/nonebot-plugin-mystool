@@ -11,15 +11,15 @@ from string import ascii_letters, digits
 import qrcode
 from typing import Optional, Union, List, Dict, Any, Tuple, Type
 from pydantic import ValidationError, BaseModel
-from nonebot import on_command, get_bot, get_app
+from nonebot import on_command, get_bot, get_app, get_bots
 from nonebot.matcher import Matcher
 #from nonebot.adapters.onebot.v11 import MessageSegment, MessageEvent, GroupMessageEvent
-from nonebot.adapters.onebot.v11 import (Bot, MessageSegment,
+from nonebot.adapters.onebot.v11 import (MessageSegment,
                                          PrivateMessageEvent, GroupMessageEvent, Message, MessageEvent)
 from nonebot.adapters.console import (MessageEvent as ConsoleMessageEvent,
                                       Message as ConsoleMessage)
 from nonebot.adapters.qqguild import (MessageEvent as GuildMessageEvent,
-                                      Message as GuildMessage, Bot as GuildBot,
+                                      Message as GuildMessage,
                                       MessageSegment as GuildMessageSegment,
                                       MessageCreateEvent as GuildMessageCreateEvent)
 from nonebot.adapters.telegram.event import MessageEvent as TelegramMessageEvent
@@ -195,7 +195,7 @@ qrcode_bind.command = 'qrcode_bind'
 qrcode_bind.usage = "通过米游社扫码的方式登录"
 
 @qrcode_bind.handle()
-async def _(event: ALL_MessageEvent):
+async def _(bot: Bot, event: ALL_MessageEvent):
     if str(get_user_id(event)) in running_login_data:
         await qrcode_bind.finish('你已经在绑定中了，请扫描上一次的二维码')
     login_data = await create_login_data()
@@ -206,17 +206,19 @@ async def _(event: ALL_MessageEvent):
     ])
     msg_event = await msg_builder.send(at_sender=True)
     running_login_data[get_user_id(event)] = {
+        "bot": bot,
         "login_data": login_data,
         "event": event,
         "msg_event": msg_event
     }
 
-@scheduler.scheduled_job('cron', second='*/10')
+@scheduler.scheduled_job('cron', second='*/10', misfire_grace_time=10)
 async def check_qrcode():
-    bot:Bot = get_bot()
     keys_to_remove = []
     for user_id, data_dict in running_login_data.items():
         data = data_dict["login_data"]
+        bot:Bot = data_dict["bot"]
+        logger.info(bot)
         event: MessageEvent = data_dict["event"]
         msg_event: Message = data_dict["msg_event"]
         status_data = await check_login(data)
